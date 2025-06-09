@@ -13,25 +13,18 @@ jobs:
         shell: pwsh
         run: |
           choco install rubberduck -y
-          # Verify installation
-          if (Test-Path "C:\Program Files\Rubberduck\Rubberduck.CLI.exe") {
-            Write-Host "Rubberduck CLI found at expected location"
-          } else {
-            Write-Host "Rubberduck CLI not found at expected location in C:\Program Files\Rubberduck\"
-            Write-Host "Listing contents of C:\Program Files\Rubberduck\:"
-            Get-ChildItem "C:\Program Files\Rubberduck" | Select-Object FullName
-            exit 1
-          }
 
       - name: Run VBA Tests
         shell: pwsh
         run: |
           cd workbook
-          # Use PowerShell call operator to launch the CLI
-          $rubberduckPath = "C:\Program Files\Rubberduck\Rubberduck.CLI.exe" # Default to Program Files, will be updated if needed
-          if (Test-Path $rubberduckPath) {
+          # Locate Rubberduck CLI executable
+          $rubberduckPath = Get-ChildItem -Path "C:\Program Files", "C:\Program Files (x86)", "C:\ProgramData" -Filter "Rubberduck.CLI.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+          
+          if ($null -ne $rubberduckPath) {
+            Write-Host "Rubberduck CLI found at: $rubberduckPath"
             & $rubberduckPath -project ETL_Accelerator.xlsm -tests all
           } else {
-            Write-Error "Rubberduck CLI not found at: $rubberduckPath"
+            Write-Error "Rubberduck CLI executable not found on the system after installation."
             exit 1
           }
