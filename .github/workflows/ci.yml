@@ -1,4 +1,6 @@
+# .github/workflows/ci.yml
 name: CI
+
 on:
   push:
     branches:
@@ -35,12 +37,13 @@ jobs:
             $zip.Dispose()
           }
           catch {
-            Write-Warning "⚠️ ZIP inspection failed: $($_.Exception.Message)"
+            Write-Warning "⚠️  ZIP inspection failed: $($_.Exception.Message)"
             Write-Warning "Assuming VBA modules are present so we don’t skip the CLI."
             $found = $true
           }
 
-          Write-Output "hasModules=$found" | Out-File -FilePath $GITHUB_OUTPUT -Encoding UTF8
+          # write the output to the runner‐provided GITHUB_OUTPUT file
+          Add-Content -Path $env:GITHUB_OUTPUT -Value "hasModules=$found"
 
       - name: Inspect & Run VBA Tests
         if: steps.vba_check.outputs.hasModules == 'true'
