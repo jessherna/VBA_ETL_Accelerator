@@ -1,0 +1,18 @@
+name: CI
+on:
+  push:
+    branches: [ main ]
+jobs:
+  test:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Install Rubberduck via Chocolatey
+        run: choco install rubberduck
+
+      - name: Run VBA Tests
+        run: |
+          cd workbook
+          "C:\Program Files\Rubberduck\Rubberduck.CLI.exe" -project ETL_Accelerator.xlsm -tests all
