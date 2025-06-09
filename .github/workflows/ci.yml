@@ -18,13 +18,16 @@ jobs:
         shell: pwsh
         run: |
           cd workbook
-          # Locate Rubberduck CLI executable
-          $rubberduckPath = Get-ChildItem -Path "C:\Program Files", "C:\Program Files (x86)", "C:\ProgramData" -Filter "Rubberduck.CLI.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+          # Locate Rubberduck CLI executable within the reported installation path
+          $rubberduckPath = Get-ChildItem -Path "C:\ProgramData\Rubberduck\" -Filter "Rubberduck.CLI.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
           
           if ($null -ne $rubberduckPath) {
             Write-Host "Rubberduck CLI found at: $rubberduckPath"
             & $rubberduckPath -project ETL_Accelerator.xlsm -tests all
           } else {
-            Write-Error "Rubberduck CLI executable not found on the system after installation."
+            Write-Error "Rubberduck CLI executable not found at 'C:\ProgramData\Rubberduck\' or its immediate subdirectories. Listing contents for further diagnosis."
+            # List immediate contents of C:\ProgramData\Rubberduck\ to further diagnose
+            Write-Host "Direct contents of C:\ProgramData\Rubberduck\:"
+            Get-ChildItem -Path "C:\ProgramData\Rubberduck\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
             exit 1
           }
