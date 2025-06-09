@@ -18,16 +18,22 @@ jobs:
         shell: pwsh
         run: |
           cd workbook
-          # Locate Rubberduck CLI executable within the reported installation path
-          $rubberduckPath = Get-ChildItem -Path "C:\ProgramData\Rubberduck\" -Filter "Rubberduck.CLI.exe" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
-          
-          if ($null -ne $rubberduckPath) {
-            Write-Host "Rubberduck CLI found at: $rubberduckPath"
+          # Assume Rubberduck CLI is directly in the deployed path for now
+          $rubberduckPath = "C:\ProgramData\Rubberduck\Rubberduck.CLI.exe"
+
+          if (Test-Path $rubberduckPath) {
+            Write-Host "Attempting to run Rubberduck CLI from: $rubberduckPath"
             & $rubberduckPath -project ETL_Accelerator.xlsm -tests all
           } else {
-            Write-Error "Rubberduck CLI executable not found at 'C:\ProgramData\Rubberduck\' or its immediate subdirectories. Listing contents for further diagnosis."
-            # List immediate contents of C:\ProgramData\Rubberduck\ to further diagnose
-            Write-Host "Direct contents of C:\ProgramData\Rubberduck\:"
-            Get-ChildItem -Path "C:\ProgramData\Rubberduck\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+            Write-Error "Rubberduck CLI executable not found at assumed path: $rubberduckPath."
             exit 1
           }
+
+      - name: Debug Rubberduck Installation
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "Listing subdirectories in C:\ProgramData\Rubberduck\:"
+          Get-ChildItem -Path "C:\ProgramData\Rubberduck\" -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+          Write-Host "Listing files in C:\ProgramData\Rubberduck\ (non-recursive) :"
+          Get-ChildItem -Path "C:\ProgramData\Rubberduck\" -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
