@@ -21,19 +21,16 @@ jobs:
         shell: pwsh
         run: |
           cd workbook
-
-          # Try locating CLI via Get-Command
-          $cli = (Get-Command Rubberduck.CLI.exe -ErrorAction SilentlyContinue).Source
-
-          # Fallback if not in PATH
+        
+          # Try finding Rubberduck.CLI.exe anywhere on disk
+          $cli = Get-ChildItem -Path 'C:\' -Filter 'Rubberduck.CLI.exe' -Recurse -ErrorAction SilentlyContinue -Force |
+                 Select-Object -First 1 -ExpandProperty FullName
+        
           if (-not $cli -or -not (Test-Path $cli)) {
-            $cli = "C:\Program Files\Rubberduck\Rubberduck.CLI.exe"
-          }
-
-          if (-not (Test-Path $cli)) {
-            Write-Error "Rubberduck CLI not found at $cli"
+            Write-Error "Rubberduck CLI not found on any drive"
             exit 1
           }
-
-          Write-Host "Rubberduck CLI found at $cli"
+        
+          Write-Host "Rubberduck CLI found at: $cli"
           & $cli -project ETL_Accelerator.xlsm -tests all
+        
