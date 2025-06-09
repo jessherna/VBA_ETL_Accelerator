@@ -18,6 +18,8 @@ jobs:
             Write-Host "Rubberduck CLI found at expected location"
           } else {
             Write-Host "Rubberduck CLI not found at expected location"
+            Write-Host "Listing contents of C:\ProgramData\Rubberduck\:"
+            Get-ChildItem "C:\ProgramData\Rubberduck" -Recurse | Select-Object FullName
             exit 1
           }
 
