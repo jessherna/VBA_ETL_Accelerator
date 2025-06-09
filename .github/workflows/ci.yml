@@ -1,11 +1,14 @@
 name: CI
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+
 jobs:
   test:
     runs-on: windows-latest
     steps:
+
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -14,17 +17,30 @@ jobs:
         run: |
           choco install rubberduck -y
 
-      - name: Run VBA Tests
+      - name: Check for VBA modules
+        shell: pwsh
+        id: vba_check
+        run: |
+          # Launch Excel via COM and count VB components
+          $excel = New-Object -ComObject Excel.Application
+          $wbPath = "${{ github.workspace }}\workbook\ETL_Accelerator.xlsm"
+          $wb = $excel.Workbooks.Open($wbPath, 3)
+          $hasCode = $wb.VBProject.VBComponents.Count -gt 0
+          $wb.Close($false)
+          $excel.Quit()
+          Write-Output "hasModules=$hasCode" | Out-File -FilePath $GITHUB_OUTPUT -Encoding UTF8
+
+      - name: Inspect & Run VBA Tests
+        if: steps.vba_check.outputs.hasModules == 'true'
         shell: pwsh
         run: |
-          cd workbook
-          # Assume Rubberduck CLI is in the Program Files directory
-          $rubberduckPath = "C:\Program Files\Rubberduck\Rubberduck.CLI.exe"
+          Write-Host "✅ VBA code found – running Rubberduck CLI"
+          & Rubberduck.CLI.exe inspect `
+              --project "$env:GITHUB_WORKSPACE\workbook\ETL_Accelerator.xlsm" `
+              --tests all
 
-          if (Test-Path $rubberduckPath) {
-            Write-Host "Attempting to run Rubberduck CLI from: $rubberduckPath"
-            & $rubberduckPath -project ETL_Accelerator.xlsm -tests all
-          } else {
-            Write-Error "Rubberduck CLI executable not found at assumed path: $rubberduckPath."
-            exit 1
-          }
+      - name: Skip Rubberduck (no VBA)
+        if: steps.vba_check.outputs.hasModules != 'true'
+        shell: pwsh
+        run: |
+          Write-Host "ℹ️  No VBA modules detected; skipping Rubberduck CLI."
