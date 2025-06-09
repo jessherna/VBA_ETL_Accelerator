@@ -27,7 +27,7 @@ jobs:
         run: |
           cd workbook
           # Use PowerShell call operator to launch the CLI
-          $rubberduckPath = "C:\Program Files\Rubberduck\Rubberduck.CLI.exe"
+          $rubberduckPath = "C:\ProgramData\Rubberduck\Rubberduck.CLI.exe"
           if (Test-Path $rubberduckPath) {
             & $rubberduckPath -project ETL_Accelerator.xlsm -tests all
           } else {
