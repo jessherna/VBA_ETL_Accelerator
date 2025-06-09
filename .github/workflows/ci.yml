@@ -1,4 +1,5 @@
 name: CI
+
 on:
   push:
     branches:
@@ -9,7 +10,7 @@ jobs:
     runs-on: windows-latest
     steps:
 
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
       - name: Install Rubberduck via Chocolatey
@@ -18,29 +19,35 @@ jobs:
           choco install rubberduck -y
 
       - name: Check for VBA modules
-        shell: pwsh
         id: vba_check
+        shell: pwsh
         run: |
-          # Launch Excel via COM and count VB components
-          $excel = New-Object -ComObject Excel.Application
-          $wbPath = "${{ github.workspace }}\workbook\ETL_Accelerator.xlsm"
-          $wb = $excel.Workbooks.Open($wbPath, 3)
-          $hasCode = $wb.VBProject.VBComponents.Count -gt 0
-          $wb.Close($false)
-          $excel.Quit()
-          Write-Output "hasModules=$hasCode" | Out-File -FilePath $GITHUB_OUTPUT -Encoding UTF8
+          # load .NET ZIP support
+          Add-Type -AssemblyName System.IO.Compression.FileSystem
+
+          # point at your workbook
+          $xlsmPath = "workbook\ETL_Accelerator.xlsm"
+
+          # open the .xlsm as a zip and look for the VBA project stream
+          $zip = [System.IO.Compression.ZipFile]::OpenRead($xlsmPath)
+          $hasVba = $zip.Entries | Where-Object { $_.FullName -eq 'xl/vbaProject.bin' }
+          $zip.Dispose()
+
+          # export a boolean flag
+          $found = ($hasVba -ne $null)
+          Write-Output "hasModules=$found" | Out-File -FilePath $GITHUB_OUTPUT -Encoding UTF8
 
       - name: Inspect & Run VBA Tests
         if: steps.vba_check.outputs.hasModules == 'true'
         shell: pwsh
         run: |
-          Write-Host "✅ VBA code found – running Rubberduck CLI"
-          & Rubberduck.CLI.exe inspect `
-              --project "$env:GITHUB_WORKSPACE\workbook\ETL_Accelerator.xlsm" `
-              --tests all
+          Write-Host "✅ VBA found – running Rubberduck CLI"
+          Rubberduck.CLI.exe inspect `
+            --project "workbook\ETL_Accelerator.xlsm" `
+            --tests all
 
       - name: Skip Rubberduck (no VBA)
         if: steps.vba_check.outputs.hasModules != 'true'
         shell: pwsh
         run: |
-          Write-Host "ℹ️  No VBA modules detected; skipping Rubberduck CLI."
+          Write-Host "ℹ️ No VBA modules detected; skipping Rubberduck CLI."
