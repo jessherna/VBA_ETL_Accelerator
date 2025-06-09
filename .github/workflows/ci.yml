@@ -1,5 +1,4 @@
 name: CI
-
 on:
   push:
     branches:
@@ -22,26 +21,32 @@ jobs:
         id: vba_check
         shell: pwsh
         run: |
-          # load .NET ZIP support
+          # load the ZIP APIs
           Add-Type -AssemblyName System.IO.Compression.FileSystem
 
-          # point at your workbook
           $xlsmPath = "workbook\ETL_Accelerator.xlsm"
+          $found = $false
 
-          # open the .xlsm as a zip and look for the VBA project stream
-          $zip = [System.IO.Compression.ZipFile]::OpenRead($xlsmPath)
-          $hasVba = $zip.Entries | Where-Object { $_.FullName -eq 'xl/vbaProject.bin' }
-          $zip.Dispose()
+          try {
+            $zip = [System.IO.Compression.ZipFile]::OpenRead($xlsmPath)
+            if ($zip.Entries | Where-Object { $_.FullName -eq 'xl/vbaProject.bin' }) {
+              $found = $true
+            }
+            $zip.Dispose()
+          }
+          catch {
+            Write-Warning "⚠️ ZIP inspection failed: $($_.Exception.Message)"
+            Write-Warning "Assuming VBA modules are present so we don’t skip the CLI."
+            $found = $true
+          }
 
-          # export a boolean flag
-          $found = ($hasVba -ne $null)
           Write-Output "hasModules=$found" | Out-File -FilePath $GITHUB_OUTPUT -Encoding UTF8
 
       - name: Inspect & Run VBA Tests
         if: steps.vba_check.outputs.hasModules == 'true'
         shell: pwsh
         run: |
-          Write-Host "✅ VBA found – running Rubberduck CLI"
+          Write-Host "✅ VBA detected — running Rubberduck CLI"
           Rubberduck.CLI.exe inspect `
             --project "workbook\ETL_Accelerator.xlsm" `
             --tests all
@@ -50,4 +55,4 @@ jobs:
         if: steps.vba_check.outputs.hasModules != 'true'
         shell: pwsh
         run: |
-          Write-Host "ℹ️ No VBA modules detected; skipping Rubberduck CLI."
+          Write-Host "ℹ️  No VBA modules detected; skipping Rubberduck CLI."
