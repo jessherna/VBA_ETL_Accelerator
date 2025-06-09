@@ -13,6 +13,10 @@ jobs:
         run: choco install rubberduck
 
       - name: Run VBA Tests
+        shell: pwsh
         run: |
           cd workbook
-          "C:\Program Files\Rubberduck\Rubberduck.CLI.exe" -project ETL_Accelerator.xlsm -tests all
+          # Use PowerShell call operator to launch the CLI
+          & "C:\Program Files\Rubberduck\Rubberduck.CLI.exe" `
+            -project ETL_Accelerator.xlsm `
+            -tests all
