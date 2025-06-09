@@ -18,8 +18,8 @@ jobs:
         shell: pwsh
         run: |
           cd workbook
-          # Assume Rubberduck CLI is directly in the deployed path for now
-          $rubberduckPath = "C:\ProgramData\Rubberduck\Rubberduck.CLI.exe"
+          # Assume Rubberduck CLI is within the 'Installers' subdirectory
+          $rubberduckPath = "C:\ProgramData\Rubberduck\Installers\Rubberduck.CLI.exe"
 
           if (Test-Path $rubberduckPath) {
             Write-Host "Attempting to run Rubberduck CLI from: $rubberduckPath"
@@ -37,3 +37,5 @@ jobs:
           Get-ChildItem -Path "C:\ProgramData\Rubberduck\" -Directory -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
           Write-Host "Listing files in C:\ProgramData\Rubberduck\ (non-recursive) :"
           Get-ChildItem -Path "C:\ProgramData\Rubberduck\" -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
+          Write-Host "Listing contents of C:\ProgramData\Rubberduck\Installers\:"
+          Get-ChildItem -Path "C:\ProgramData\Rubberduck\Installers\" -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName
