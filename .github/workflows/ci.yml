@@ -1,72 +1,40 @@
-# .github/workflows/ci.yml
 name: CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   test:
     runs-on: windows-latest
-    steps:
 
-      - name: Checkout repo
+    steps:
+      - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install Rubberduck via Chocolatey
+      - name: Install Rubberduck CLI
         shell: pwsh
         run: |
-          choco install rubberduck -y
+          choco install rubberduck-cli -y
 
-      - name: Check for VBA modules
-        id: vba_check
+      - name: Find Rubberduck CLI and Run Tests
         shell: pwsh
         run: |
-          # load the ZIP APIs
-          Add-Type -AssemblyName System.IO.Compression.FileSystem
+          cd workbook
 
-          $xlsmPath = "workbook\ETL_Accelerator.xlsm"
-          $found = $false
+          # Try resolving CLI from system PATH
+          $cli = (Get-Command Rubberduck.CLI.exe -ErrorAction SilentlyContinue).Source
 
-          try {
-            $zip = [System.IO.Compression.ZipFile]::OpenRead($xlsmPath)
-            if ($zip.Entries | Where-Object { $_.FullName -eq 'xl/vbaProject.bin' }) {
-              $found = $true
-            }
-            $zip.Dispose()
-          }
-          catch {
-            Write-Warning "⚠️ ZIP inspection failed: $($_.Exception.Message)"
-            Write-Warning "Assuming VBA modules are present."
-            $found = $true
+          # Fallback to known Chocolatey install path
+          if (-not $cli -or -not (Test-Path $cli)) {
+            $cli = 'C:\ProgramData\chocolatey\bin\Rubberduck.CLI.exe'
           }
 
-          # export the boolean
-          Add-Content -Path $env:GITHUB_OUTPUT -Value "hasModules=$found"
-
-      - name: Inspect & Run VBA Tests
-        if: steps.vba_check.outputs.hasModules == 'true'
-        shell: pwsh
-        run: |
-          # locate the CLI: try PATH, then chocolatey lib, then ProgramData
-          $cli = (Get-Command Rubberduck.CLI.exe -ErrorAction SilentlyContinue)?.Source
-          $candidates = @(
-            "$env:ALLUSERSPROFILE\chocolatey\lib\rubberduck\tools\Rubberduck.CLI.exe",
-            "C:\ProgramData\rubberduck\Rubberduck.CLI.exe"
-          )
-          foreach ($p in $candidates) {
-            if (-not $cli -and Test-Path $p) { $cli = $p }
-          }
-          if (-not $cli) {
-            Write-Error "❌ Rubberduck CLI not found on PATH or in known locations."
+          # Fail if still not found
+          if (-not (Test-Path $cli)) {
+            Write-Error \"Rubberduck CLI not found. Checked PATH and fallback.\"
             exit 1
           }
-          Write-Host "✅ Using Rubberduck CLI at: $cli"
-          & $cli inspect --project "workbook\ETL_Accelerator.xlsm" --tests all
 
-      - name: Skip Rubberduck (no VBA)
-        if: steps.vba_check.outputs.hasModules != 'true'
-        shell: pwsh
-        run: |
-          Write-Host "ℹ️ No VBA modules detected; skipping Rubberduck CLI."
+          Write-Host \"Rubberduck CLI found at: $cli\"
+          & $cli -project ETL_Accelerator.xlsm -tests all
