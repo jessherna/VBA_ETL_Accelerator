@@ -12,21 +12,28 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download Rubberduck CLI
+      - name: Install Rubberduck (Excel Add-in + CLI)
         shell: pwsh
         run: |
-          $releaseUrl = "https://github.com/rubberduck-vba/Rubberduck/releases/download/v2.5.91/RubberduckCLI.zip"
-          $zipPath = "$env:RUNNER_TEMP\\rubberduck-cli.zip"
-          $extractPath = "$env:RUNNER_TEMP\\rubberduck"
+          choco install rubberduck -y
 
-          Invoke-WebRequest -Uri $releaseUrl -OutFile $zipPath
-          Expand-Archive -Path $zipPath -DestinationPath $extractPath
-
-          # Save the CLI path to the environment for later steps
-          echo "CLI_PATH=$extractPath\\Rubberduck.CLI.exe" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
-
-      - name: Run VBA Tests
+      - name: Locate Rubberduck CLI and Run Tests
         shell: pwsh
         run: |
           cd workbook
-          & $env:CLI_PATH -project ETL_Accelerator.xlsm -tests all
+
+          # Try locating CLI via Get-Command
+          $cli = (Get-Command Rubberduck.CLI.exe -ErrorAction SilentlyContinue).Source
+
+          # Fallback if not in PATH
+          if (-not $cli -or -not (Test-Path $cli)) {
+            $cli = "C:\Program Files\Rubberduck\Rubberduck.CLI.exe"
+          }
+
+          if (-not (Test-Path $cli)) {
+            Write-Error "Rubberduck CLI not found at $cli"
+            exit 1
+          }
+
+          Write-Host "Rubberduck CLI found at $cli"
+          & $cli -project ETL_Accelerator.xlsm -tests all
